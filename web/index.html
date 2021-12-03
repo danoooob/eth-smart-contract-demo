@@ -1,0 +1,270 @@
+<html lang="en">
+    <header>
+        <style>
+/* The Modal (background) */
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0,0,0); /* Fallback color */
+  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}
+
+/* Modal Content/Box */
+.modal-content {
+  background-color: #fefefe;
+  margin: 15% auto; /* 15% from the top and centered */
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%; /* Could be more or less, depending on screen size */
+}
+
+/* The Close Button */
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
+}
+        </style>
+        <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script type="text/javascript">
+            const CONTRACT_ADDR = '0x030Bb1731fDA42181745b9F9DAd7cEF1Af64D87A';
+            jsonInterface = [
+                {
+                "inputs": [],
+                "stateMutability": "nonpayable",
+                "type": "constructor"
+                },
+                {
+                "inputs": [],
+                "name": "MIN_BET",
+                "outputs": [
+                    {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function",
+                "constant": true
+                },
+                {
+                "inputs": [],
+                "name": "betValue",
+                "outputs": [
+                    {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function",
+                "constant": true
+                },
+                {
+                "inputs": [],
+                "name": "join",
+                "outputs": [],
+                "stateMutability": "payable",
+                "type": "function",
+                "payable": true
+                },
+                {
+                "inputs": [
+                    {
+                    "internalType": "string",
+                    "name": "_playerChoice",
+                    "type": "string"
+                    }
+                ],
+                "name": "makeChoice",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+                },
+                {
+                "inputs": [],
+                "name": "whoAmI",
+                "outputs": [
+                    {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function",
+                "constant": true
+                },
+                {
+                "inputs": [],
+                "name": "disclose",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+                }
+            ];
+            const web3 = new Web3(Web3.givenProvider || "ws://localhost:7545");
+            var contract = new web3.eth.Contract(jsonInterface, CONTRACT_ADDR);
+            
+            async function getBlockNumber() {
+                const latestBlockNumber = await web3.eth.getBlockNumber();
+                console.log(latestBlockNumber);
+                return latestBlockNumber;
+            }
+            
+            async function getBalance() {
+                if ($("#address").val() != "") {
+                    const balance = await web3.eth.getBalance($("#address").val());
+                    msg = "Balance = " + weiToEther(balance) + " ether";
+                    $("#account_alert").text(msg);
+                    return balance;
+                }
+            }
+
+            function weiToEther(wei) {
+                var etherValue = web3.utils.fromWei(wei, 'ether');
+                console.log(etherValue);
+                return etherValue;
+            }
+
+            function etherToWei(ether) {
+                var weiValue = web3.utils.toWei(ether.toString(), 'ether');
+                console.log(weiValue);
+                return weiValue;
+            }
+
+            $(document).ready(function() {
+                console.log(contract);
+                $('#get_balance_btn').click(function() {
+                    getBalance();
+                });
+
+                $("#check_join_game").click(function() {
+                    address = $("#address").val();
+                    if (address != "") {
+                        web3.eth.defaultAccount = address;
+                        contract.methods.whoAmI().call({from: address}).then(function (val){
+                            msg = "Not yet joined";
+                            if (val == 1) {
+                                msg = "You're Player 1";
+                            } else if (val == 2) {
+                                msg = "You're Player 2";
+                            }
+                            alert(msg);
+                        }).catch((err) => {
+                            var message = err.message.split('\n')[0].substr(66);
+                            alert(message);
+                        });
+                    }
+                });
+
+                window.onclick = function(event) {
+                    if (event.target == document.getElementById("gameModal")) {
+                        $("#gameModal").css({ display: "none" });
+                    }
+                }
+
+                $(".close").click(function() {
+                    $("#gameModal").css({ display: "none" });
+                });
+
+
+                $("#join_game").click(function() {
+                    address = $("#address").val();
+                    betVal = $("#bet_val").val();
+                    if (address != "" && $.isNumeric(betVal)) {
+                        web3.eth.defaultAccount = address;
+                        contract.methods.join().send({from: address, value: parseInt(etherToWei(betVal))}).then(function (){
+                            $("#gameModal").css({ display: "block" });
+                        }).catch((err) => {
+                            var message = err.message.split('\n')[0].substr(66);
+                            alert(message);
+                        });
+                    }
+                });
+
+                $("#submit_decision").click(function() {
+                    address = $("#address").val();
+                    decision = $("#decision").val();
+                    if (address != "") {
+                        web3.eth.defaultAccount = address;
+                        contract.methods.makeChoice(decision).send({from: address}).then(function (){
+                            $("#gameModal").css({ display: "none" });
+                        }).catch((err) => {
+                            var message = err.message.split('\n')[0].substr(66);
+                            alert(message);
+                        });
+                    }
+                });
+
+                $("#disclose").click(function() {
+                    address = $("#address").val();
+                    decision = $("#decision").val();
+                    if (address != "") {
+                        web3.eth.defaultAccount = address;
+                        contract.methods.disclose().send({from: address}).then(console.log).catch((err) => {
+                            var message = err.message.split('\n')[0].substr(66);
+                            alert(message);
+                        });
+                    }
+                });
+            })
+        </script>
+    </header>
+    <body>
+        <div width="100%">
+            <label for="address">Address</label>
+            <!-- <select id="address">
+                <option value="0x831C7a2A7BecBd3B56b4A0c0b53384cB96bb8762">0x831C7a2A7BecBd3B56b4A0c0b53384cB96bb8762</option>
+                <option value="0xA05253CA273cAF997f48c402C93319F58f7e4d1B">0xA05253CA273cAF997f48c402C93319F58f7e4d1B</option>
+                <option value="0x61c87A19aB87dBfE1a3E7697E5546c83A138b49e">0x61c87A19aB87dBfE1a3E7697E5546c83A138b49e</option>
+                <option value="0x4777a256C8f81BeD8e9bbee658eFCD5fD0727546">0x4777a256C8f81BeD8e9bbee658eFCD5fD0727546</option>
+                <option value="0x83CA589d4713EA8163e64ed46981652419D94f55">0x83CA589d4713EA8163e64ed46981652419D94f55</option>
+            </select> -->
+            <input id="address" name="addr" type="text" placeholder="ETH address" />
+            <button id="get_balance_btn">GET BALANCE</button>
+            <button id="check_join_game">ALREADY JOINED?</button>
+        </div>
+        <div width="100%" id="account_alert"></div>
+        <div width="100%">
+            <label for="bet_val">BET value (ether)</label>
+            <input type="number" name="bet_val" id="bet_val" placeholder="0" value="1" />
+            <button id="join_game">JOIN GAME</button>
+            <button id="disclose">DISCLOSE</button>
+        </div>
+        
+
+        <!-- Modal -->
+        <div id="gameModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <div width="100%">
+                    <label for="decision">Your choice: </label>
+                    <select name="decision" id="decision" value ="R">
+                        <option value="R">Rock</option>
+                        <option value="P">Paper</option>
+                        <option value="S">Scissor</option>
+                    </select>
+                    <button id="submit_decision">SUBMIT</button>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
